@@ -61,7 +61,7 @@ export const GAME_CONFIG = {
 
 ```bash
 npm run build -w games/jump
-# 然后用抖音开发者工具导入 games/jump/dist/game/ 上传
+# 然后用抖音开发者工具导入 games/jump/dist/douyin/ 上传
 ```
 
 ### 第 3 步：真机验证

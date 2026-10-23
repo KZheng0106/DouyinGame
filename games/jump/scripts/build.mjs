@@ -2,11 +2,11 @@ import { build } from 'esbuild';
 import { copyFile, mkdir, rm } from 'node:fs/promises';
 
 const webOut = 'dist/web';
-const gameOut = 'dist/game';
+const wxOut = 'dist/wx';
+const douyinOut = 'dist/douyin';
 
 await rm('dist', { recursive: true, force: true });
-await mkdir(webOut, { recursive: true });
-await mkdir(gameOut, { recursive: true });
+for (const dir of [webOut, wxOut, douyinOut]) await mkdir(dir, { recursive: true });
 
 const common = {
   bundle: true,
@@ -24,16 +24,27 @@ await build({
 });
 await copyFile('index.html', `${webOut}/index.html`);
 
-// 抖音小游戏版（dist/game 即为开发者工具要导入的项目根目录）
+// 微信小游戏版
 await build({
   ...common,
   entryPoints: ['src/main.ts'],
-  outfile: `${gameOut}/game.js`,
+  outfile: `${wxOut}/game.js`,
   minify: true,
 });
-await copyFile('game.json', `${gameOut}/game.json`);
-await copyFile('project.config.json', `${gameOut}/project.config.json`);
+await copyFile('game.json', `${wxOut}/game.json`);
+await copyFile('project.wx.config.json', `${wxOut}/project.config.json`);
+
+// 抖音小游戏版
+await build({
+  ...common,
+  entryPoints: ['src/main.ts'],
+  outfile: `${douyinOut}/game.js`,
+  minify: true,
+});
+await copyFile('game.json', `${douyinOut}/game.json`);
+await copyFile('project.config.json', `${douyinOut}/project.config.json`);
 
 console.log('\n构建完成：');
-console.log(`  浏览器预览  ${webOut}/index.html`);
-console.log(`  抖音小游戏  ${gameOut}/  ← 用「抖音开发者工具」导入这个目录`);
+console.log(`  浏览器预览    ${webOut}/index.html`);
+console.log(`  微信小游戏    ${wxOut}/     ← 用「微信开发者工具」导入这个目录`);
+console.log(`  抖音小游戏    ${douyinOut}/     ← 用「抖音开发者工具」导入这个目录`);

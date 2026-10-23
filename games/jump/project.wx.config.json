@@ -1,0 +1,12 @@
+{
+  "appid": "请填写你的微信小程序 AppID",
+  "projectname": "jump",
+  "compileType": "game",
+  "libVersion": "latest",
+  "setting": {
+    "es6": true,
+    "minified": true,
+    "urlCheck": false,
+    "checkSiteMap": false
+  }
+}

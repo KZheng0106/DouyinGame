@@ -74,7 +74,7 @@
 ### Phase 2｜工程搭建（2~3 天）— ✅ 已完成
 
 - 三层架构：`core`（纯逻辑，可单测）/ `render`（Canvas 绘制）/ `platform`（tt 与浏览器双适配）；
-- 构建：esbuild 单文件 IIFE → `games/jump/dist/game/`；
+- 构建：esbuild 单文件 IIFE → `games/jump/dist/douyin/`；
 - 逻辑测试：11 项覆盖蓄力、落点、计分、复活、关卡可达性、随机可复现。
 
 ✅ 完成标准：`npm run check` 通过，`npm run build` 产出可在开发者工具中启动。

@@ -14,7 +14,7 @@ export type PointerHandler = (position: PointerPosition) => void;
 export type AdResult = 'completed' | 'skipped' | 'failed';
 
 export interface PlatformAdapter {
-  readonly name: 'tt' | 'web';
+  readonly name: 'tt' | 'wx' | 'web';
   readonly canvas: HTMLCanvasElement;
   readonly ctx: CanvasRenderingContext2D;
   viewport(): Viewport;

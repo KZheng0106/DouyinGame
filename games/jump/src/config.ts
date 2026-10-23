@@ -2,7 +2,10 @@
  * 上线前需要人工填写的配置。
  */
 export const GAME_CONFIG = {
-  /** 抖音开放平台 → 小游戏 → 流量主 → 激励视频广告位 ID。留空则无法拉取真实广告。 */
+  /** 微信小游戏 · 流量主激励视频广告位 ID（形如 adunit-xxxxxxxx）。上线前必填。 */
+  wxRewardedAdUnitId: '',
+
+  /** 抖音小游戏 · 激励视频广告位 ID。 */
   rewardedAdUnitId: '',
 
   /** 插屏广告位 ID（当前版本未使用，预留）。 */

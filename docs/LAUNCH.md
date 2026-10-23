@@ -116,7 +116,7 @@ export const GAME_CONFIG = {
 
 ```bash
 npm run check -w games/jump
-npm run build -w games/jump     # 产出 games/jump/dist/game/
+npm run build -w games/jump     # 产出 games/jump/dist/douyin/
 ```
 
 ---
@@ -135,7 +135,7 @@ npm run build -w games/jump     # 产出 games/jump/dist/game/
 📖 [开发小游戏（官方）](https://developer.open-douyin.com/docs/resource/zh-CN/mini-game/guide/minigame/develop)
 
 1. 工具首页 → 「导入项目」
-2. **目录选择 `games/jump/dist/game/`**（不是仓库根目录，不是 `src/`）
+2. **目录选择 `games/jump/dist/douyin/`**（不是仓库根目录，不是 `src/`）
 3. AppID 会自动从 `project.config.json` 读取
 4. 点「编译」，左侧模拟器出画面
 5. 点「预览」→ 手机抖音扫码 → **真机测试**
