@@ -1,0 +1,9 @@
+{
+  "appid": "请填写你的小游戏AppID",
+  "projectname": "DouyinGame",
+  "setting": {
+    "es6": true,
+    "minified": true,
+    "urlCheck": false
+  }
+}

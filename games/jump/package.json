@@ -1,0 +1,14 @@
+{
+  "name": "@douyin-games/jump",
+  "version": "0.1.0",
+  "private": true,
+  "description": "跳一跳：按住蓄力、松开跳跃的休闲玩法",
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "build": "node scripts/build.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "node --experimental-strip-types --test test/*.test.ts",
+    "check": "npm run typecheck && npm test"
+  }
+}

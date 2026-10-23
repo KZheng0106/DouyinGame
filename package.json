@@ -1,0 +1,20 @@
+{
+  "name": "douyin-games",
+  "version": "0.1.0",
+  "private": true,
+  "description": "抖音小游戏合集：每个游戏一个独立子包，共用根目录工具链",
+  "workspaces": [
+    "games/*"
+  ],
+  "scripts": {
+    "check": "npm run check --workspaces --if-present",
+    "build": "npm run build --workspaces --if-present",
+    "dev": "npm run dev -w games/jump",
+    "test": "npm run test --workspaces --if-present"
+  },
+  "devDependencies": {
+    "@types/node": "^22.18.13",
+    "esbuild": "^0.28.2",
+    "typescript": "^5.9.3"
+  }
+}
