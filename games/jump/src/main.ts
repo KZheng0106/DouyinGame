@@ -121,3 +121,17 @@ function frame(time: number): void {
 
 platform.raf(frame);
 
+// 提审截图脚本（scripts/shot.mjs）需要可复现的画面，仅在 URL 带 ?shot=1 时开放。
+// 小游戏环境没有 location，这段代码不会生效。
+if (typeof location !== 'undefined' && location.search.includes('shot=1')) {
+  (globalThis as any).__jumpShot = {
+    state: () => game,
+    start: () => startRun(game),
+    charge: () => startCharge(game),
+    setPower: (power: number) => {
+      if (game.phase === 'charging') game.power = power;
+    },
+    release: () => releaseCharge(game),
+  };
+}
+
