@@ -193,9 +193,11 @@ function drawOverlay(
   ctx.textBaseline = 'middle';
 
   if (state.phase === 'ready') {
+    // 名字变长时自动缩小，避免超出画面
+    const nameSize = Math.min(40, Math.floor((view.w - 48) / GAME_CONFIG.gameName.length));
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 40px sans-serif';
-    ctx.fillText('跳一跳', view.w / 2, view.h * 0.34);
+    ctx.font = `bold ${nameSize}px sans-serif`;
+    ctx.fillText(GAME_CONFIG.gameName, view.w / 2, view.h * 0.34);
 
     ctx.fillStyle = 'rgba(255,255,255,0.7)';
     ctx.font = '15px sans-serif';
