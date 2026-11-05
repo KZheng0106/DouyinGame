@@ -85,8 +85,22 @@ try {
   }
   console.log('\n接着在公众平台「管理 → 版本管理 → 开发版本」里选为体验版或提交审核。');
 } catch (error) {
+  const message = String(error?.message || error);
   console.error('\n上传失败：', error?.message || error);
-  if (String(error?.message || '').includes('ip')) {
+
+  const blocked = message.match(/invalid ip:\s*([0-9.]+)/);
+  if (blocked) {
+    const ip = blocked[1];
+    console.error('');
+    console.error(`微信拒绝了来自 ${ip} 的上传：该 IP 不在白名单内。`);
+    console.error('');
+    console.error('二选一：');
+    console.error(`  A) 加入白名单：微信公众平台 → 管理 → 开发管理 → 开发设置 → 小程序代码上传`);
+    console.error(`     → IP 白名单 → 添加 ${ip}`);
+    console.error('  B) 关闭 IP 白名单（同一区域里的开关），本机调试期更省事');
+    console.error('');
+    console.error('改完重跑本命令即可，密钥不用重新生成。');
+  } else if (message.includes('-10008')) {
     console.error('多半是 IP 白名单：到开发设置里把本机公网 IP 加进去，或临时关闭白名单。');
   }
   process.exit(1);
