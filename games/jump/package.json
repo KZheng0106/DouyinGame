@@ -11,6 +11,10 @@
     "test": "node --experimental-strip-types --test test/*.test.ts",
     "check": "npm run typecheck && npm test",
     "shots": "node scripts/shot.mjs",
-    "appid": "node scripts/set-appid.mjs"
+    "appid": "node scripts/set-appid.mjs",
+    "upload": "node scripts/upload.mjs"
+  },
+  "devDependencies": {
+    "miniprogram-ci": "^2.1.31"
   }
 }

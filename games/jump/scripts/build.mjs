@@ -46,5 +46,5 @@ await copyFile('project.config.json', `${douyinOut}/project.config.json`);
 
 console.log('\n构建完成：');
 console.log(`  浏览器预览    ${webOut}/index.html`);
-console.log(`  微信小游戏    ${wxOut}/     ← 用「微信开发者工具」导入这个目录`);
+console.log(`  微信小游戏    ${wxOut}/     ← npm run upload -w games/jump -- 1.0.0 "备注"`);
 console.log(`  抖音小游戏    ${douyinOut}/     ← 用「抖音开发者工具」导入这个目录`);

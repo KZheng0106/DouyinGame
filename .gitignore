@@ -147,3 +147,7 @@ vite.config.ts.timestamp-*
 
 # Turbo Repo
 .turbo
+
+# 微信小游戏代码上传密钥（含私钥，禁止提交）
+private.wx.key
+*.key
