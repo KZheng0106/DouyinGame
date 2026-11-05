@@ -1,9 +1,19 @@
 import { build } from 'esbuild';
-import { copyFile, mkdir, rm } from 'node:fs/promises';
+import { copyFile, mkdir, readFile, rm } from 'node:fs/promises';
 
 const webOut = 'dist/web';
 const wxOut = 'dist/wx';
 const douyinOut = 'dist/douyin';
+
+// 广告位 ID 填错（漏前缀、粘成广告位名称）不会报错，只会在真机上静默拉不到广告，
+// 所以放在构建时拦住。
+const configSource = await readFile('src/config.ts', 'utf8');
+for (const field of ['wxRewardedAdUnitId', 'rewardedAdUnitId']) {
+  const value = new RegExp(`${field}\\s*:\\s*'([^']*)'`).exec(configSource)?.[1] ?? '';
+  if (value && !/^adunit-[0-9a-zA-Z]+$/.test(value)) {
+    throw new Error(`${field} 格式不对：「${value}」应以 adunit- 开头，后面是广告位 ID 本身`);
+  }
+}
 
 await rm('dist', { recursive: true, force: true });
 for (const dir of [webOut, wxOut, douyinOut]) await mkdir(dir, { recursive: true });

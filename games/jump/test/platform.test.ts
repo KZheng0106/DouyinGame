@@ -147,3 +147,55 @@ test('广告位未配置时 showRewardedAd 直接放行，按钮不会点了没�
     delete (globalThis as any).wx;
   }
 });
+
+test('预加载后复用同一个广告实例，不会重复创建', async () => {
+  let created = 0;
+  installWx(() => {
+    created += 1;
+    let close: ((res: unknown) => void) | null = null;
+    return {
+      onClose(cb: (res: unknown) => void) {
+        close = cb;
+      },
+      onError() {},
+      offClose() {},
+      offError() {},
+      show: async () => close?.({ isEnded: true }),
+      load: async () => {},
+    };
+  });
+  try {
+    const platform = createWxAdapter();
+    platform.preloadRewardedAd?.('adunit-1');
+    assert.equal(await platform.showRewardedAd('adunit-1'), 'completed');
+    assert.equal(created, 1, '广告实例只应创建一次，重复创建会让后续 show 一直失败');
+  } finally {
+    delete (globalThis as any).wx;
+  }
+});
+
+test('广告位未配置时不预加载，不发无效请求', async () => {
+  const { preloadRewardedAd } = await import('../src/ads.ts');
+  const { GAME_CONFIG } = await import('../src/config.ts');
+  const saved = GAME_CONFIG.wxRewardedAdUnitId;
+  GAME_CONFIG.wxRewardedAdUnitId = '';
+  let requested = 0;
+  installWx(() => {
+    requested += 1;
+    return {
+      onClose() {},
+      onError() {},
+      offClose() {},
+      offError() {},
+      show: async () => {},
+      load: async () => {},
+    };
+  });
+  try {
+    preloadRewardedAd(createWxAdapter());
+    assert.equal(requested, 0);
+  } finally {
+    GAME_CONFIG.wxRewardedAdUnitId = saved;
+    delete (globalThis as any).wx;
+  }
+});

@@ -382,6 +382,8 @@
 | **自动环境识别** | `createPlatform()` 依次探测 `wx` / `tt` / 浏览器，同一份代码三端跑 |
 | **微信构建产物** | `npm run build -w games/jump` → `dist/wx/`（`game.js` + `game.json` + `project.config.json`） |
 | **广告位分流** | `config.ts` 里 `wxRewardedAdUnitId` 与 `rewardedAdUnitId` 分开，微信端自动取微信广告位 |
+| **激励视频通道** | 新增 [`src/platform/ad-channel.ts`](./../games/jump/src/platform/ad-channel.ts)：实例复用、启动预加载、`show()` 失败自动 `load()` 重试、`isEnded` 判定发奖 |
+| **广告位格式校验** | `scripts/build.mjs` 在打包前校验 ID 必须是 `adunit-xxx`，填错直接中止构建 |
 
 **当前微信包体积：13.9KB（`dist/wx/game.js`）。**
 
@@ -632,6 +634,116 @@ npm run upload -w games/jump -- 1.0.1 "修复上线调试开关：关闭模拟�
 小游戏发布后，在公众平台「推广 → 流量主」申请开通（有用户量门槛，**具体以后台提示为准**），再创建激励视频广告位，把 `adunit-xxx` 发我。
 
 **开通后必须做**：把 `games/jump/src/config.ts` 的 `debugFakeAd` 改成 `false`，否则用户不看广告也能复活。
+
+---
+
+## 六之二、广告接入：代码已完成，只差一个 ID
+
+这一节回答「广告到底怎么接」。结论先给：**该写的代码全写完了**，
+你不需要改一行代码，只需要在流量主开通后把 `adunit-xxxxxxxx` 填到 `config.ts` 第 12 行。
+
+### 6C.1 广告代码的完整链路（已实现）
+
+```
+玩家坠落 → 结算页点「看视频复活」（layout.ts 生成 revive 按钮）
+        ↓
+main.ts requestRevive() 把 phase 切成 adLoading（期间画出「加载中」）
+        ↓
+ads.ts showRewardedAd()
+        ↓ 读取 config.wxRewardedAdUnitId
+        ↓ 为空 → 直接返回 completed（免费复活，见 6C.3）
+        ↓ 非空 → 交给平台适配器
+platform/wx.ts → platform/ad-channel.ts
+        ↓ 复用同一个 RewardedVideoAd 实例
+        ↓ show() 失败先 load() 再 show()
+wx.createRewardedVideoAd({ adUnitId })
+        ↓
+onClose(res) → res.isEnded === true ? 'completed' : 'skipped'
+onError()    → 'failed'
+        ↓
+只有 'completed' 才 revive(game)，其余回到 dead 状态
+```
+
+**关键文件**
+
+| 文件 | 作用 |
+|---|---|
+| [`src/config.ts`](./../games/jump/src/config.ts) | 广告位 ID 与调试开关的唯一入口 |
+| [`src/ads.ts`](./../games/jump/src/ads.ts) | 分流微信/抖音广告位、决定是否放行 |
+| [`src/platform/ad-channel.ts`](./../games/jump/src/platform/ad-channel.ts) | 激励视频实例复用、预加载、看完判定 |
+| [`src/platform/wx.ts`](./../games/jump/src/platform/wx.ts) | 绑定 `wx.createRewardedVideoAd` |
+| [`src/main.ts`](./../games/jump/src/main.ts) | 启动时 `preloadRewardedAd()`，复活按钮走 `requestRevive()` |
+
+### 6C.2 已经处理掉的四个坑
+
+| 坑 | 不处理的后果 | 现在的做法 |
+|---|---|---|
+| 每次点击都 `createRewardedVideoAd` | 第二次之后 `show()` 一直失败，玩家点复活没反应 | 实例只创建一次，之后复用（`ad-channel.ts`） |
+| 不预加载，点击时才拉广告 | 黑屏等 1~3 秒，这段流失率极高 | 启动时 `preloadRewardedAd()` 提前 load |
+| `show()` 失败直接判定失败 | 首次播放必然失败（官方要求先 `load()`） | 失败后自动 `load().then(show)` 重试一次 |
+| 没看广告也算完成 | 平台判定「激励视频未观看即发奖」，属违规 | 只有 `res.isEnded === true` 返回 `completed` |
+
+### 6C.3 广告位为空时的行为（当前状态）
+
+`wxRewardedAdUnitId` 还是空字符串，此时：
+
+- 启动时**不**发起任何广告请求（避免无效请求）
+- 点「看视频复活」**立即**复活，不播广告
+- 结算页照常显示「看视频复活」按钮
+
+这是刻意的降级：流量主要 UV 满 1000 才能开通，这段空窗期若返回 `failed`，
+按钮点了毫无反应，玩家会以为游戏卡死。**填入 ID 后自动切换到真实广告**，无需改代码。
+
+> ⚠️ 提审时如果审核员点「看视频复活」发现没播广告，可能留言问询。
+> 回复「广告位待流量主开通后配置，功能已按平台规范接入」即可，不影响过审。
+
+### 6C.4 你需要做的三步（等流量主开通后）
+
+**① 后台创建广告位**
+
+公众平台 → 左侧「流量主」→ 开通后进入「广告位管理」→ 新建广告位：
+
+| 字段 | 填什么 |
+|---|---|
+| 广告位类型 | **激励视频** |
+| 广告位名称 | `跳跳小光-复活`（自己看得懂即可） |
+| 适用场景 | 单局失败后复活 |
+
+创建完成后列表里会出现一串 `adunit-` 开头的 ID，**整串复制**。
+
+**② 填进配置**
+
+打开 [`games/jump/src/config.ts`](./../games/jump/src/config.ts) 第 12 行：
+
+```ts
+wxRewardedAdUnitId: 'adunit-xxxxxxxxxxxxxxxx',
+```
+
+> 只填 `adunit-` 后面那串是不够的，**前缀必须带上**。
+> 构建脚本会校验格式，填错会直接报「格式不对」并中止，不会打包出一个畸形产物。
+
+**③ 重新构建上传**
+
+```bash
+cd ~/workspace/Game/DouyinGame
+npm run build -w games/jump
+npm run upload -w games/jump -- 1.0.2 "接入激励视频广告"
+```
+
+### 6C.5 怎么验证广告真的接通了
+
+不要靠「感觉」，按这个顺序看：
+
+| 检查项 | 方法 | 正常表现 |
+|---|---|---|
+| 代码里 ID 生效 | `grep adunit games/jump/dist/wx/game.js` | 能搜到你填的那串 |
+| 调试开关已关 | `grep debugFakeAd games/jump/dist/wx/game.js` | 显示 `debugFakeAd:!1` |
+| 真机能否播放 | 微信开发者工具扫码 → 故意坠落 → 点「看视频复活」 | 弹出真实视频广告 |
+| 看完是否发奖 | 完整看完 15/30 秒 | 回到坠落前平台继续玩 |
+| 中途关闭是否拦 | 广告播 3 秒就点 × 关闭 | **不**复活，回到结算页 |
+| 收益是否产生 | 流量主后台 → 数据统计 → 次日看 | 有曝光与收益记录 |
+
+> 广告刚创建后通常需要 **1~2 小时**才生效，刚填完立刻测可能拉不到，属正常现象。
 
 ---
 

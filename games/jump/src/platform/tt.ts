@@ -1,4 +1,5 @@
-import type { AdResult, PlatformAdapter, PointerHandler, Viewport } from './types.ts';
+import { createRewardedAdChannel } from './ad-channel.ts';
+import type { PlatformAdapter, PointerHandler, Viewport } from './types.ts';
 
 // 抖音小游戏的 tt 全局对象没有官方 TS 类型随包提供，这里只声明用到的能力。
 // 延迟到调用时读取：测试环境与部分容器会在模块加载之后才注入 tt。
@@ -11,6 +12,12 @@ export function createTtAdapter(): PlatformAdapter {
   const downHandlers: PointerHandler[] = [];
   const upHandlers: PointerHandler[] = [];
   const resizeHandlers: Array<() => void> = [];
+
+  const rewardedAd = createRewardedAdChannel(
+    typeof tt.createRewardedVideoAd === 'function'
+      ? (options) => tt.createRewardedVideoAd(options)
+      : undefined,
+  );
 
   let viewport: Viewport = readSystemInfo();
 
@@ -85,43 +92,12 @@ export function createTtAdapter(): PlatformAdapter {
       }
     },
 
+    preloadRewardedAd(adUnitId) {
+      rewardedAd.preload(adUnitId);
+    },
+
     showRewardedAd(adUnitId) {
-      return new Promise<AdResult>((resolve) => {
-        if (typeof tt.createRewardedVideoAd !== 'function') {
-          resolve('failed');
-          return;
-        }
-
-        let settled = false;
-        let ad: any;
-        const finish = (result: AdResult): void => {
-          if (settled) return;
-          settled = true;
-          try {
-            ad?.offClose?.(onClose);
-            ad?.offError?.(onError);
-          } catch {
-            /* 忽略解绑异常 */
-          }
-          resolve(result);
-        };
-
-        const onClose = (res: any): void => finish(res && res.isEnded === true ? 'completed' : 'skipped');
-        const onError = (): void => finish('failed');
-
-        try {
-          ad = tt.createRewardedVideoAd({ adUnitId });
-          ad.onClose(onClose);
-          ad.onError(onError);
-          ad.show().catch(() => {
-            ad.load()
-              .then(() => ad.show())
-              .catch(() => finish('failed'));
-          });
-        } catch {
-          finish('failed');
-        }
-      });
+      return rewardedAd.show(adUnitId);
     },
 
     raf(callback) {

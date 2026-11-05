@@ -25,5 +25,7 @@ export interface PlatformAdapter {
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;
   showRewardedAd(adUnitId: string): Promise<AdResult>;
+  /** 可选：提前把广告拉下来，点击时直接播放 */
+  preloadRewardedAd?(adUnitId: string): void;
   raf(callback: (time: number) => void): void;
 }

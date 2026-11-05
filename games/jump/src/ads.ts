@@ -25,3 +25,14 @@ export async function showRewardedAd(platform: PlatformAdapter): Promise<AdResul
 
   return platform.showRewardedAd(adUnitId);
 }
+
+/**
+ * 在开局时调用，提前把激励视频下载好。
+ * 不预加载的话，玩家点「看视频复活」要等 1~3 秒才出广告，这段空白期流失率很高。
+ */
+export function preloadRewardedAd(platform: PlatformAdapter): void {
+  if (GAME_CONFIG.debugFakeAd) return;
+  const adUnitId = adUnitIdFor(platform);
+  if (!adUnitId) return;
+  platform.preloadRewardedAd?.(adUnitId);
+}

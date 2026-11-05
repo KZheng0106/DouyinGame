@@ -1,4 +1,4 @@
-import { showRewardedAd } from './ads.ts';
+import { preloadRewardedAd, showRewardedAd } from './ads.ts';
 import { DESIGN_WIDTH } from './core/constants.ts';
 import {
   canRevive,
@@ -120,6 +120,7 @@ function frame(time: number): void {
 }
 
 platform.raf(frame);
+preloadRewardedAd(platform);
 
 // 提审截图脚本（scripts/shot.mjs）需要可复现的画面，仅在 URL 带 ?shot=1 时开放。
 // 小游戏环境没有 location，这段代码不会生效。
