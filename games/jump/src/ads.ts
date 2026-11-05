@@ -16,7 +16,12 @@ export async function showRewardedAd(platform: PlatformAdapter): Promise<AdResul
     await new Promise((resolve) => setTimeout(resolve, FAKE_AD_MS));
     return 'completed';
   }
+
   const adUnitId = adUnitIdFor(platform);
-  if (!adUnitId) return 'failed';
+  // 流量主未开通、广告位未配置时退化为直接复活：
+  // 此时没有任何广告可放，若返回 'failed' 会让「看视频复活」按钮点了毫无反应。
+  // 一旦填入广告位 ID，就会走真实激励视频流程。
+  if (!adUnitId) return 'completed';
+
   return platform.showRewardedAd(adUnitId);
 }

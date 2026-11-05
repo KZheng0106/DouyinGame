@@ -131,3 +131,19 @@ test('缺少 createRewardedVideoAd 时返回 failed', async () => {
     delete (globalThis as any).wx;
   }
 });
+
+test('广告位未配置时 showRewardedAd 直接放行，按钮不会点了没反应', async () => {
+  const { showRewardedAd } = await import('../src/ads.ts');
+  const { GAME_CONFIG } = await import('../src/config.ts');
+  const saved = GAME_CONFIG.wxRewardedAdUnitId;
+  GAME_CONFIG.wxRewardedAdUnitId = '';
+  installWx(() => {
+    throw new Error('广告位为空时不应请求广告');
+  });
+  try {
+    assert.equal(await showRewardedAd(createWxAdapter()), 'completed');
+  } finally {
+    GAME_CONFIG.wxRewardedAdUnitId = saved;
+    delete (globalThis as any).wx;
+  }
+});

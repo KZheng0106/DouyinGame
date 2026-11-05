@@ -18,8 +18,8 @@ export const GAME_CONFIG = {
   interstitialAdUnitId: '',
 
   /**
-   * 调试开关：为 true 时不请求真实广告，直接判定"完整观看"。
-   * ⚠️ 上线前必须改为 false，否则用户不看广告也能复活。
+   * 调试开关：为 true 时不请求真实广告，直接判定"完整观看"，并会在结束页显示红字提示。
+   * 上线版本必须为 false。
    */
-  debugFakeAd: true,
+  debugFakeAd: false,
 };
