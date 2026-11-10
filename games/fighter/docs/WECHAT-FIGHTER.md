@@ -289,12 +289,16 @@ grep -rn "request\|fetch\|WebSocket\|cloud" src/    # → 无输出
 |---|---|---|
 | **至少 3 张**（一次性上传） | 传 5 张 | ✅ |
 | 格式 JPG / PNG | 全部 PNG | ✅ |
-| 单张 **60KB ~ 5MB** | 485 ~ 953KB | ✅ |
+| 单张 **60KB ~ 5MB** | 402 ~ 1002KB | ✅ |
 | 须为**微信游戏内**截图（非设计稿 / 非抖音版） | 由 `npm run shots` 在微信 webview 同款渲染下截取 | ✅ |
 | 截图内**游戏名必须等于当前小游戏名** | 标题页渲染 `config.gameName` = 奶娃大作战 | ✅ |
 
 > ⚠️ 这 5 张**不得**再填进「系统 1/2/3」，否则后台报
 > 「请勿重复提交相同截图。不同模块需提交不一样的截图」——这是第一款被拒的原因。
+>
+> 除了「别跨模块复用」，还要注意**同一模块内两张图本身不能长得像**：
+> 裁同一场战斗只改血条数字，人工审核与后台比对都可能判重复。
+> `scripts/shot.mjs` 已内置结构 + 像素两道检查（见第 10 节），跑通即达标。
 
 ### 8.3 整体玩法设计（207 字，要求 ≥50）
 
@@ -354,19 +358,28 @@ grep -rn "request\|fetch\|WebSocket\|cloud" src/    # → 无输出
 
 ## 10. 截图清单（8 张，一一对应，不交叉复用）
 
-全部为 **1920×1080** 横屏，体积 485~953KB，均在 60KB~5MB 合规区间内。
+全部为 **1920×1080** 横屏，体积 402~1002KB，均在 60KB~5MB 合规区间内。
 生成命令：`npm run shots -w games/fighter`（需先 `npm run dev -w games/fighter` 起 5174 端口）。
 
-| 表单位置 | 文件 | 画面内容 | 体积 |
+脚本内置**两道防重复检查**，任一张与已有截图撞车会直接报错退出：
+
+1. **结构去重**：八张图的「界面 + 英雄对」必须互不相同（同一界面同一对英雄，只改血条数字也算重复）；
+2. **像素去重**：整幅灰度差 ≥ 8 且三段中最大段变化率 ≥ 12%，阈值按实测标定，详见 `scripts/shot.mjs` 注释。
+
+| 表单位置 | 文件 | 画面内容（英雄对） | 体积 |
 |---|---|---|---|
-| 相关截图 1 | [`relevant-1-title.png`](./../assets/screenshots/relevant-1-title.png) | 标题页，大字「奶娃大作战」+ 三英雄待机 | 638KB |
-| 相关截图 2 | [`relevant-2-select.png`](./../assets/screenshots/relevant-2-select.png) | 选人页，三张英雄卡 + 难度 + 对手行 | 770KB |
-| 相关截图 3 | [`relevant-3-ultimate.png`](./../assets/screenshots/relevant-3-ultimate.png) | 大招命中，全屏光效 + 高伤害数字 | 953KB |
-| 相关截图 4 | [`relevant-4-result.png`](./../assets/screenshots/relevant-4-result.png) | 失败结算页，含「看视频续关」按钮 | 496KB |
-| 相关截图 5 | [`relevant-5-victory.png`](./../assets/screenshots/relevant-5-victory.png) | 胜利结算页，比分 / 伤害 / 最高连击 | 485KB |
-| **系统 1** 四键战斗 | [`system-1-start.png`](./../assets/screenshots/system-1-start.png) | 开局 READY，六个按键完整可见 | 836KB |
-| **系统 2** 连击能量 | [`system-2-combo.png`](./../assets/screenshots/system-2-combo.png) | 打斗中，血条 / 能量条 / 连击数同时变化 | 911KB |
-| **系统 3** 回合复活 | [`system-3-vs.png`](./../assets/screenshots/system-3-vs.png) | 回合切换，顶部胜点圆点亮起 | 862KB |
+| 相关截图 1 | [`relevant-1-title.png`](./../assets/screenshots/relevant-1-title.png) | 标题页，大字「奶娃大作战」+ 三英雄待机 | 640KB |
+| 相关截图 2 | [`relevant-2-select.png`](./../assets/screenshots/relevant-2-select.png) | 选人页，三张英雄卡 + 难度 + 对手行 | 768KB |
+| 相关截图 3 | [`relevant-3-ultimate.png`](./../assets/screenshots/relevant-3-ultimate.png) | 大招命中：**奶娃（玩家）vs 咕咕嘎嘎**，能量满 + 连击 6 + 全屏光效 | 1002KB |
+| 相关截图 4 | [`relevant-4-result.png`](./../assets/screenshots/relevant-4-result.png) | 失败结算页：**咕咕嘎嘎 vs 牛来**，牛来立绘 + 「看视频续关」按钮 | 497KB |
+| 相关截图 5 | [`relevant-5-victory.png`](./../assets/screenshots/relevant-5-victory.png) | 胜利结算页：**奶娃 vs 牛来**，奶娃胜利姿势 + 比分 / 伤害 / 最高连击 | 403KB |
+| **系统 1** 四键战斗 | [`system-1-start.png`](./../assets/screenshots/system-1-start.png) | 开局 READY：**牛来 vs 奶娃**，满血，六个按键完整可见 | 840KB |
+| **系统 2** 连击能量 | [`system-2-combo.png`](./../assets/screenshots/system-2-combo.png) | 打斗中：**咕咕嘎嘎 vs 牛来**，血条 / 能量条 / 连击数同时变化 | 940KB |
+| **系统 3** 回合复活 | [`system-3-vs.png`](./../assets/screenshots/system-3-vs.png) | 回合切换：**牛来 vs 咕咕嘎嘎**，顶部胜点圆点亮起 | 905KB |
+
+> 六张战斗相关图的英雄对**两两不同**，这是刻意的：微信后台会比对「不同模块是否提交了相同截图」，
+> 同一对英雄只改数字的两张图会被判重复（上一款游戏就因此被驳回过一次）。
+> 改 `shot.mjs` 的取景时务必保持英雄对不重复，脚本会自动拦截。
 
 > 提审截图里必须能看到与后台**一字不差**的游戏名。若改了 `gameName`，
 > 必须重跑 `npm run shots`，否则 `relevant-1-title.png` 与实际名称不一致会被驳回。

@@ -30,8 +30,23 @@ const SCALE = 2;
 const MIN_BYTES = 60 * 1024;
 const MAX_BYTES = 5 * 1024 * 1024;
 
-/** 左/中/右三段中至少一段的变化像素比例要达到该值，否则判为重复截图。 */
-const MIN_REGION_CHANGE = 9;
+/**
+ * 判定「两张图是否看起来一样」用两个互补的检查：
+ *
+ *  1. 结构检查：每张图登记自己的界面与英雄对，八张必须互不相同。
+ *     —— 同一对英雄的同一界面，怎么调血条都是「重复截图」，这是最硬的判据。
+ *  2. 像素检查：整幅灰度差 ≥ MIN_GLOBAL_DIFF，且左/中/右三段里变化最大的一段
+ *     ≥ MIN_REGION_CHANGE（只取最大段，不要求三段全变）。
+ *
+ * 阈值是按实测标定的，不要随手调大：
+ *   - 固定镜头格斗游戏的左右两侧永远是同一片街景，换英雄也只让中段变化，
+ *     所以「三段都变」这个要求在这类画面里根本达不到；
+ *   - 真正的区分力在「整幅」：同英雄对只改血条/连击数字时整幅差实测 ≈ 4，
+ *     而不同界面/不同英雄对实测都在 9 以上 → 阈值 8 正好卡在中间；
+ *   - 「最大段」是兜底：最相似的合法组合（胜负两张结算页）实测 14.9%，取 12 留余量。
+ */
+const MIN_REGION_CHANGE = 12;
+const MIN_GLOBAL_DIFF = 8;
 
 function findChrome() {
   const candidates = [
@@ -181,7 +196,18 @@ async function main() {
         return { w: TW, h: TH, gray: out };
       })()`);
 
-    const capture = async (name) => {
+    /** meta.scene / meta.matchup 用于结构去重：八张图不能有相同的「界面 + 英雄对」。 */
+    const metas = {};
+
+    const capture = async (name, meta) => {
+      const key = `${meta.scene}|${meta.matchup ?? '-'}`;
+      const dup = Object.entries(metas).find(([, m]) => `${m.scene}|${m.matchup ?? '-'}` === key);
+      if (dup) {
+        throw new Error(
+          `${name} 与 ${dup[0]} 是同一个界面 + 同一对英雄（${key}），属于重复截图，换一对英雄或换界面`,
+        );
+      }
+      metas[name] = { ...meta };
       const { data } = await client.send('Page.captureScreenshot', { format: 'png' });
       const buffer = Buffer.from(data, 'base64');
       if (buffer.length < MIN_BYTES || buffer.length > MAX_BYTES) {
@@ -214,55 +240,64 @@ async function main() {
     // ── 相关截图①：标题页，画面正中就是小游戏名称 ────────────────────
     await bridge('b.toTitle(); return true;');
     await sleep(500);
-    await capture('relevant-1-title');
+    await capture('relevant-1-title', { scene: 'title' });
 
     // ── 相关截图②：选人页，三位英雄并列 ─────────────────────────────
     await bridge('b.toSelect(); return true;');
     await sleep(500);
-    await capture('relevant-2-select');
+    await capture('relevant-2-select', { scene: 'select' });
 
-    // ── 系统1：对战开场 READY，双方满血满状态 ────────────────────────
+    // 四张战斗场景图必须用四对不同的英雄，否则左右两侧的画面完全一致，
+    // 只靠中间特效的差别撑不起来，后台会判「重复提交相同截图」。
+    // 三英雄共 6 种有序对，下面 4 场互不重复。
+
+    // ── 系统1：对战开场 READY，双方满血满状态（牛来 vs 奶娃）─────────
     await bridge("b.toFight('niu','gu'); return true;");
     await sleep(350);
-    await capture('system-1-start');
+    await capture('system-1-start', { scene: 'fight-ready', matchup: 'niu-gu' });
 
-    // ── 系统2：中局，血条不满 + 能量过半 + 连击数在屏幕上方 ──────────
-    // 摆一簇重拳特效并让角色处于受击姿态，画面与开场 READY 拉开距离
+    // ── 系统2：中局，血条不满 + 能量满 + 连击数在屏幕上方（咕咕嘎嘎 vs 牛来）──
+    await bridge("b.toFight('nai','niu'); return true;");
+    await sleep(350);
     await bridge('b.set({ hp1: 0.62, hp2: 0.45, energy1: 100, energy2: 44, combo1: 3, timeLeft: 2280 }); return true;');
     await bridge('b.forceMove("heavy", 17); return true;');
     await bridge('b.spawnFx("heavy"); return true;');
     await sleep(140);
-    await capture('system-2-combo');
+    await capture('system-2-combo', { scene: 'fight-combo', matchup: 'nai-niu' });
 
-    // ── 相关截图③：大招释放瞬间，牛来「妈妈——」 ─────────────────────
-    await bridge('b.set({ energy1: 100, hp2: 0.28, combo1: 5 }); return true;');
+    // ── 相关截图③：大招释放瞬间，奶娃「魔性笑声」六段（奶娃 vs 咕咕嘎嘎）──
+    await bridge("b.toFight('gu','nai'); return true;");
+    await sleep(350);
+    await bridge('b.set({ hp1: 0.83, hp2: 0.22, energy1: 100, energy2: 18, combo1: 6, timeLeft: 3450 }); return true;');
     await bridge('b.forceMove("ultimate", 30); return true;');
     await bridge('b.spawnFx("ultimate"); return true;');
     await sleep(150);
-    await capture('relevant-3-ultimate');
+    await capture('relevant-3-ultimate', { scene: 'fight-ultimate', matchup: 'gu-nai' });
 
-    // ── 系统3：另一对英雄的对局（咕咕嘎嘎 vs 奶娃），画面明显不同 ─────
-    await bridge("b.toFight('gu','nai'); return true;");
+    // ── 系统3：回合切换，顶部胜点圆点亮起（牛来 vs 咕咕嘎嘎）──────────
+    await bridge("b.toFight('niu','nai'); return true;");
     await sleep(350);
     await bridge('b.set({ hp1: 0.4, hp2: 0.72, energy2: 100, combo2: 4, timeLeft: 900 }); return true;');
     await bridge('b.forceMove("heavy", 12); return true;');
     await bridge('b.spawnFx("light", true); return true;');
     await sleep(140);
-    await capture('system-3-vs');
+    await capture('system-3-vs', { scene: 'fight-round', matchup: 'niu-nai' });
 
-    // ── 相关截图④：结算页（失败态，带看视频续关按钮）──────────────────
+    // ── 相关截图④：结算页（失败态，带看视频续关按钮）咕咕嘎嘎 vs 牛来 ──
+    // 失败页立绘是「赢家」的 idle 姿势，所以这里让牛来赢，
+    // 与相关截图⑤的奶娃胜利姿势形成不同角色，避免两张结算页看起来一样。
     await bridge("b.toFight('nai','niu'); return true;");
     await sleep(300);
     await bridge("b.toResult('p2'); return true;");
     await sleep(600);
-    await capture('relevant-4-result');
+    await capture('relevant-4-result', { scene: 'result-lose', matchup: 'nai-niu' });
 
-    // ── 相关截图⑤：结算页胜利态 ────────────────────────────────────
-    await bridge("b.toFight('niu','nai'); return true;");
+    // ── 相关截图⑤：结算页胜利态，奶娃 vs 牛来 ─────────────────────
+    await bridge("b.toFight('gu','niu'); return true;");
     await sleep(300);
     await bridge("b.toResult('p1'); return true;");
     await sleep(600);
-    await capture('relevant-5-victory');
+    await capture('relevant-5-victory', { scene: 'result-win', matchup: 'gu-niu' });
 
     // 逐对比较，确保没有两张图看起来一样
     const { w: TW, h: TH } = hashes[Object.keys(hashes)[0]];
@@ -285,30 +320,42 @@ async function main() {
         }
         return (changed / total) * 100;
       });
-      return { ranks, worst: Math.max(...ranks) };
+      let sum = 0;
+      for (let i = 0; i < a.gray.length; i += 1) sum += Math.abs(a.gray[i] - b.gray[i]);
+      const global = sum / a.gray.length;
+      return { ranks, worst: Math.max(...ranks), global };
     };
 
     const names = Object.keys(shots);
     const rows = [];
     for (let i = 0; i < names.length; i += 1) {
       for (let j = i + 1; j < names.length; j += 1) {
-        const { ranks, worst } = compare(hashes[names[i]], hashes[names[j]]);
-        rows.push({ label: `${names[i]} | ${names[j]}`, ranks, worst });
+        const { ranks, worst, global } = compare(hashes[names[i]], hashes[names[j]]);
+        rows.push({ label: `${names[i]} | ${names[j]}`, ranks, worst, global });
       }
     }
-    rows.sort((x, y) => x.worst - y.worst);
+    rows.sort((x, y) => x.worst - y.worst || x.global - y.global);
 
-    console.log('\n画面差异（左/中/右三段的变化像素比例，取最大段判定）：');
+    console.log('\n画面差异（左/中/右三段的变化像素比例 + 整幅灰度差）：');
     for (const row of rows.slice(0, 8)) {
       const cells = row.ranks.map((v) => `${v.toFixed(1).padStart(5)}%`).join('  ');
-      console.log(`  ${cells}  ${row.label}`);
+      console.log(`  ${cells}  整幅 ${row.global.toFixed(1).padStart(5)}  ${row.label}`);
     }
 
-    const closest = rows[0];
-    if (closest.worst < MIN_REGION_CHANGE) {
+    const offenders = rows.filter(
+      (row) => row.worst < MIN_REGION_CHANGE || row.global < MIN_GLOBAL_DIFF,
+    );
+    if (offenders.length > 0) {
+      const detail = offenders
+        .map(
+          (row) =>
+            `  ${row.label}\n    最大段 ${row.worst.toFixed(1)}%（需 ≥ ${MIN_REGION_CHANGE}%），` +
+            `整幅 ${row.global.toFixed(1)}（需 ≥ ${MIN_GLOBAL_DIFF}）`,
+        )
+        .join('\n');
       throw new Error(
-        `截图过于相似：${closest.label}，最大段变化仅 ${closest.worst.toFixed(1)}%，` +
-          `需 ≥ ${MIN_REGION_CHANGE}%`,
+        `以下截图过于相似，会被判「重复提交相同截图」：\n${detail}\n` +
+          '  处理方式：换一对英雄（toFight 的双方），或换到另一个界面状态，不要只改血条数字。',
       );
     }
 
