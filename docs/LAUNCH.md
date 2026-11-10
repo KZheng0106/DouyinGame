@@ -57,7 +57,10 @@
 📖 [创建与信息完善（官方）](https://developer.open-douyin.com/docs/resource/zh-CN/mini-game/guide/minigame/improve-information)
 
 1. 控制台 → 小游戏 → 「创建小游戏」
-2. 填写：名称、简介、类目（休闲游戏）、头像
+2. 填写：名称、简介、类目、头像
+   - 类目**按玩法选**，不要所有游戏都填「休闲游戏」：
+     单人轻度玩法（跳跃/益智/消除）→ 休闲游戏；
+     1v1 对抗、格斗、PK（如奶娃大作战）→ **竞技类 → 对战**
 3. 进入「设置 / 开发设置」，复制 **AppID**（形如 `ttxxxxxxxxxxxxxxxx`）
 
 **把 AppID 发我**，我改 `games/jump/project.config.json`。
@@ -263,7 +266,7 @@ npm run build -w games/jump     # 产出 games/jump/dist/douyin/
 | 打回原因 | 处理方式 |
 |---|---|
 | 缺备案 / 资质不全 | 补备案，可能需补软著 |
-| 类目选错 | 改选「休闲游戏」等相符类目 |
+| 类目选错 | 改选与玩法相符的类目：单人轻度玩法 → 休闲游戏；1v1 对抗/格斗/PK → 竞技类 → 对战 |
 | 诱导分享 | 删除分享奖励逻辑 |
 | 广告遮挡 / 强制观看 / 无广告标识 | 按[广告运营规范](https://developer.open-douyin.com/docs/resource/zh-CN/mini-game/operation1/norms/norms)整改 |
 | 首屏加载过久 | 压缩首包、加 loading |
