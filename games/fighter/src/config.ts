@@ -6,7 +6,7 @@ export const GAME_CONFIG = {
    * 小游戏名称，必须与平台后台「基本设置 → 名称」逐字一致。
    * 标题页会显示它，提审截图里能看到名字才符合审核要求。
    */
-  gameName: '抽象大乱斗',
+  gameName: '奶娃大作战',
 
   /** 微信小游戏 · 流量主激励视频广告位 ID（形如 adunit-xxxxxxxx）。 */
   wxRewardedAdUnitId: '',

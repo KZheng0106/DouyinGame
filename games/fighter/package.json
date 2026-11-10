@@ -2,7 +2,7 @@
   "name": "@douyin-games/fighter",
   "version": "0.1.0",
   "private": true,
-  "description": "抽象大乱斗：网络抽象梗主题的横屏 1v1 格斗",
+  "description": "奶娃大作战：网络抽象梗主题的横屏 1v1 格斗",
   "type": "module",
   "scripts": {
     "dev": "node scripts/dev.mjs",
