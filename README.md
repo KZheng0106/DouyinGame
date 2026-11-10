@@ -20,6 +20,7 @@
 | [docs/ADS.md](docs/ADS.md) | 广告接入说明：流量主开通、三种广告 API、合规红线、错误码 |
 | [games/fighter/docs/DESIGN.md](games/fighter/docs/DESIGN.md) | **奶娃大作战设计稿**：英雄、帧数据、战斗状态机、AI、界面布局 |
 | [games/fighter/docs/HERO_PROMPTS.md](games/fighter/docs/HERO_PROMPTS.md) | 英雄立绘的 AI 出图提示词与切图规范 |
+| [games/fighter/docs/WECHAT-FIGHTER.md](games/fighter/docs/WECHAT-FIGHTER.md) | **奶娃大作战微信提审材料包**：逐字段最终取值、适龄改写、8 张截图分配、发布命令 |
 
 ## 仓库结构
 
