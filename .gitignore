@@ -151,3 +151,14 @@ vite.config.ts.timestamp-*
 # 微信小游戏代码上传密钥（含私钥，禁止提交）
 private.wx.key
 *.key
+
+# Python 临时缓存（scripts/*.py 切图用）
+__pycache__/
+*.pyc
+
+# 英雄立绘原始大图（5.8MB，切图输入，不进仓库；成品在 assets/hero）
+games/fighter/assets/hero_raw/
+# 早期 Kenney 拼头像的遗留素材，渲染层不读也不打包
+games/fighter/assets/body/
+games/fighter/assets/head/
+games/fighter/assets/roster.png

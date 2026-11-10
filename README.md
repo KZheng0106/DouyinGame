@@ -7,6 +7,7 @@
 | 游戏 | 目录 | 玩法 | 状态 |
 |---|---|---|---|
 | 跳跳小光 | [games/jump](games/jump) | 按住蓄力、松开跳跃，落空可看广告复活 | 微信小游戏已上线 `1.0.2`（2026-11-10） |
+| 抽象大乱斗 | [games/fighter](games/fighter) | 网络抽象梗 1v1 横屏格斗，3 位英雄、单机 AI 对战 | 开发中（浏览器可玩，待提审） |
 
 ## 文档
 
@@ -17,6 +18,8 @@
 | [docs/TECH-STACK.md](docs/TECH-STACK.md) | Cocos Creator 3.x 与原生 TS + Canvas 的选型对比与结论 |
 | [docs/LAUNCH.md](docs/LAUNCH.md) | 抖音上架 12 步详解（含官方链接）、提审自查清单 |
 | [docs/ADS.md](docs/ADS.md) | 广告接入说明：流量主开通、三种广告 API、合规红线、错误码 |
+| [games/fighter/docs/DESIGN.md](games/fighter/docs/DESIGN.md) | **抽象大乱斗设计稿**：英雄、帧数据、战斗状态机、AI、界面布局 |
+| [games/fighter/docs/HERO_PROMPTS.md](games/fighter/docs/HERO_PROMPTS.md) | 英雄立绘的 AI 出图提示词与切图规范 |
 
 ## 仓库结构
 
@@ -24,22 +27,27 @@
 DouyinGame/
 ├── docs/                    方案与上线文档（全仓库共用）
 ├── games/
-│   └── jump/                一个游戏 = 一个独立 npm 子包
-│       ├── src/
-│       │   ├── core/        纯逻辑：状态机、关卡生成、布局（可单测）
-│       │   ├── render/      Canvas 绘制层
-│       │   ├── platform/    wx / tt / 浏览器三端适配
-│       │   ├── config.ts    广告位 ID 与调试开关（上线前必改）
-│       │   ├── ads.ts       激励视频封装
-│       │   └── main.ts      入口：主循环、输入、存档
-│       ├── assets/          图标（icon.html 为 SVG 源）+ 提审截图
-│       ├── test/            逻辑测试
-│       ├── scripts/         dev / build
-│       ├── index.html       浏览器预览入口
-│       ├── game.json
-│       ├── project.wx.config.json    微信项目配置
-│       ├── project.config.json       抖音项目配置
-│       └── tsconfig.json
+│   ├── jump/                一个游戏 = 一个独立 npm 子包
+│   │   ├── src/
+│   │   │   ├── core/        纯逻辑：状态机、关卡生成、布局（可单测）
+│   │   │   ├── render/      Canvas 绘制层
+│   │   │   ├── platform/    wx / tt / 浏览器三端适配
+│   │   │   ├── config.ts    广告位 ID 与调试开关（上线前必改）
+│   │   │   ├── ads.ts       激励视频封装
+│   │   │   └── main.ts      入口：主循环、输入、存档
+│   │   ├── assets/          图标（icon.html 为 SVG 源）+ 提审截图
+│   │   ├── test/            逻辑测试
+│   │   ├── scripts/         dev / build / upload / shot
+│   │   ├── index.html       浏览器预览入口
+│   │   ├── game.json
+│   │   ├── project.wx.config.json    微信项目配置
+│   │   ├── project.config.json       抖音项目配置
+│   │   └── tsconfig.json
+│   └── fighter/             抽象大乱斗（结构同上，另含）
+│       ├── docs/            DESIGN.md 设计稿、HERO_PROMPTS.md 出图提示词
+│       ├── src/assets/      manifest.ts 素材清单、loader.ts 加载器
+│       ├── src/generated/   measure_hero.py 量出的立绘包围盒
+│       └── assets/hero|fx|sfx|bgm|screenshots
 ├── package.json             npm workspaces（games/*）+ 共享 devDependencies
 └── README.md
 ```
@@ -50,7 +58,8 @@ DouyinGame/
 npm install            # 根目录一次装齐所有依赖
 npm run check          # 所有游戏：类型检查 + 逻辑测试
 npm run build          # 所有游戏：产出 dist/web、dist/wx、dist/douyin
-npm run dev            # 启动 games/jump 的浏览器预览（http://localhost:5173）
+npm run dev                  # 启动 games/jump 的浏览器预览（http://localhost:5173）
+npm run dev   -w games/fighter  # 抽象大乱斗预览（http://localhost:5174）
 ```
 
 构建产物：
@@ -67,6 +76,13 @@ npm run dev            # 启动 games/jump 的浏览器预览（http://localhost
 npm run dev   -w games/jump
 npm run check -w games/jump
 npm run build -w games/jump
+```
+
+抽象大乱斗的提审截图由脚本自动生成（**脚本自己不会起 dev server**，必须先在另一个终端跑 5174）：
+
+```bash
+npm run dev   -w games/fighter                  # 终端 A：http://localhost:5174
+npm run shots -w games/fighter                  # 终端 B：产出 8 张 1920×1080 横屏截图
 ```
 
 ## 新增一个游戏
