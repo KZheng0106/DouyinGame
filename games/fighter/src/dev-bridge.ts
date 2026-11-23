@@ -62,6 +62,11 @@ export function applyHeldPatch(state: BattleState): void {
 export function installShotBridge(hooks: ShotHooks): void {
   const bridge: ShotBridge = {
     ...hooks,
+    // 换场景时清空 hold 登记，否则上一张图的格挡护盾会残留到后面的截图里
+    toFight: (hero: HeroKey, opponent: HeroKey): void => {
+      for (const key of Object.keys(heldPatch)) delete (heldPatch as Record<string, unknown>)[key];
+      hooks.toFight(hero, opponent);
+    },
     set(patch: ShotPatch): void {
       const state = hooks.state();
       if (!state) return;

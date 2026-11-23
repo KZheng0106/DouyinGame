@@ -207,7 +207,24 @@ async function main() {
      */
     const metas = {};
 
+    /**
+     * 界面类型白名单：一个界面只允许出现一次。
+     * 结算页是最容易被当成「不同截图」的坑 —— 胜负两种状态布局完全一样，
+     * 只换大字颜色和立绘，人眼和机器都不容易判为重复，但审核会。
+     */
+    const SINGLE_USE_SCREENS = new Set(['result-win', 'result-lose']);
+
     const capture = async (name, meta) => {
+      if (SINGLE_USE_SCREENS.has(meta.scene)) {
+        const taken = Object.entries(metas).find(([, m]) => SINGLE_USE_SCREENS.has(m.scene));
+        if (taken) {
+          throw new Error(
+            `${name} 与 ${taken[0]} 都是结算页（${meta.scene} / ${taken[1].scene}）。\n` +
+              '  胜负结算页布局完全相同，只有大字颜色和立绘不同，后台会判重复。\n' +
+              '  十二张图里只能保留一个结算页，其余改用战斗画面。',
+          );
+        }
+      }
       const key = `${meta.scene}|${meta.matchup ?? '-'}|${meta.state}`;
       const dup = Object.entries(metas).find(
         ([, m]) => `${m.scene}|${m.matchup ?? '-'}|${m.state}` === key,
@@ -347,14 +364,16 @@ async function main() {
     await sleep(140);
     await capture('sys-2-energy', { scene: 'fight-energy', matchup: 'gu-gu', state: 'energy-full' });
 
-    // 系统3 回合续关：失败结算，带「看视频续关」按钮
-    // 比分 1:2 惜败、伤害低、连击少 —— 与 story-3 的 0:2 完败形成明显差异
-    await bridge("b.toFight('nai','gu'); return true;");
-    await sleep(300);
-    await bridge("b.toResult('p2'); return true;");
-    await bridge('b.set({ wins1: 1, wins2: 2, damage1: 148, combo1: 2 }); return true;');
-    await sleep(600);
-    await capture('sys-3-revive', { scene: 'result-revive', matchup: 'nai-gu', state: 'revive' });
+    // 系统3 回合流程：回合间的胜点变化 + 时间耗尽判定，取代重复的失败结算页
+    // 12 张里只保留一个结算页（play-3-win），结算界面出现两次必被判重复。
+    // 时间耗尽判定：靠剩余血量比例判胜负，双方血条都还剩大半。
+    // 赢家取奶娃而非牛来 —— story-2 已经是「牛来胜利 + 对方倒地」的构图，
+    // 这里换成小个子奶娃站着、牛来倒地，两张的大字、血量、角色朝向全不同。
+    await startFight('gu', 'niu');
+    await bridge('b.set({ hp1: 0.62, hp2: 0.44, energy1: 70, energy2: 88, timeLeft: 30 }); return true;');
+    await waitFor(async () => (await getState())?.phase !== 'fight', '回合结束');
+    await sleep(400);
+    await capture('sys-3-round', { scene: 'fight-timeout', matchup: 'gu-niu', state: 'time-up' });
 
     // 逐对比较，确保没有两张图看起来一样
     const { w: TW, h: TH } = hashes[Object.keys(hashes)[0]];
