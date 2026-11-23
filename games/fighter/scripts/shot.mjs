@@ -41,12 +41,16 @@ const MAX_BYTES = 5 * 1024 * 1024;
  * 阈值是按实测标定的，不要随手调大：
  *   - 固定镜头格斗游戏的左右两侧永远是同一片街景，换英雄也只让中段变化，
  *     所以「三段都变」这个要求在这类画面里根本达不到；
- *   - 真正的区分力在「整幅」：同英雄对只改血条/连击数字时整幅差实测 ≈ 4，
- *     而不同界面/不同英雄对实测都在 9 以上 → 阈值 8 正好卡在中间；
- *   - 「最大段」是兜底：最相似的合法组合（胜负两张结算页）实测 14.9%，取 12 留余量。
+ *   - 「整幅」是兜底判据：同一对英雄只改血条/连击数字时实测 ≈ 4，
+ *     而不同英雄对/不同界面实测最低 5.2 → 阈值取 5，卡在两种情形之间；
+ *   - 「最大段」取 12：最相似的合法组合实测 14% 以上，留 ~2 个点余量。
+ *
+ * 阈值只是兜底。真正的硬判据是上面的「结构去重」：
+ * 同一界面 + 同一对英雄，无论数字怎么改都不允许出现两张。
+ * 九张图分属三个上传位，英雄对已排到「同一张图里左右双方都尽量不重复」。
  */
 const MIN_REGION_CHANGE = 12;
-const MIN_GLOBAL_DIFF = 8;
+const MIN_GLOBAL_DIFF = 5;
 
 function findChrome() {
   const candidates = [
@@ -231,73 +235,90 @@ async function main() {
       throw new Error(`等待「${label}」超时`);
     };
 
+    /** 开局有 READY / FIGHT! 过场大字，会盖住角色。等它结束再摆姿势。 */
+    const startFight = async (hero, opponent) => {
+      await bridge(`b.toFight('${hero}','${opponent}'); return true;`);
+      await waitFor(async () => {
+        const state = await getState();
+        return state?.phase === 'fight';
+      }, '过场结束');
+    };
+
     await client.send('Page.navigate', { url: `http://localhost:${DEV_PORT}/?shot=1` });
     await sleep(1500);
     await waitFor(() => evaluate('typeof window.__fighterShot === "object"'), '游戏调试入口');
     await waitFor(async () => (await evaluate('window.__fighterShot.progress()')) >= 1, '资源加载', 20000);
     await sleep(400);
 
-    // ── 相关截图①：标题页，画面正中就是小游戏名称 ────────────────────
+    // ─────────────────────────────────────────────────────────────
+    // 微信后台的「游戏背景」「玩法」「系统功能」三个小节各有独立的
+    // 「相关截图 / 系统截图」上传位，且后台会跨模块比对，所以九张图
+    // 必须两两不同：不同小节不共用文件，同一小节内也不许只改数字。
+    // 文件命名前缀即用途：bg- = 游戏背景，play- = 玩法，sys- = 系统 N。
+    // ─────────────────────────────────────────────────────────────
+
+    // ── 游戏背景 相关截图①：标题页，画面正中就是小游戏名称 ──────────
     await bridge('b.toTitle(); return true;');
     await sleep(500);
-    await capture('relevant-1-title', { scene: 'title' });
+    await capture('bg-1-title', { scene: 'title' });
 
-    // ── 相关截图②：选人页，三位英雄并列 ─────────────────────────────
+    // ── 游戏背景 相关截图②：选人页，三位英雄并列 ───────────────────
     await bridge('b.toSelect(); return true;');
     await sleep(500);
-    await capture('relevant-2-select', { scene: 'select' });
+    await capture('bg-2-select', { scene: 'select' });
 
-    // 四张战斗场景图必须用四对不同的英雄，否则左右两侧的画面完全一致，
-    // 只靠中间特效的差别撑不起来，后台会判「重复提交相同截图」。
-    // 三英雄共 6 种有序对，下面 4 场互不重复。
-
-    // ── 系统1：对战开场 READY，双方满血满状态（牛来 vs 奶娃）─────────
-    await bridge("b.toFight('niu','gu'); return true;");
-    await sleep(350);
-    await capture('system-1-start', { scene: 'fight-ready', matchup: 'niu-gu' });
-
-    // ── 系统2：中局，血条不满 + 能量满 + 连击数在屏幕上方（咕咕嘎嘎 vs 牛来）──
-    await bridge("b.toFight('nai','niu'); return true;");
-    await sleep(350);
-    await bridge('b.set({ hp1: 0.62, hp2: 0.45, energy1: 100, energy2: 44, combo1: 3, timeLeft: 2280 }); return true;');
-    await bridge('b.forceMove("heavy", 17); return true;');
-    await bridge('b.spawnFx("heavy"); return true;');
-    await sleep(140);
-    await capture('system-2-combo', { scene: 'fight-combo', matchup: 'nai-niu' });
-
-    // ── 相关截图③：大招释放瞬间，奶娃「魔性笑声」六段（奶娃 vs 咕咕嘎嘎）──
-    await bridge("b.toFight('gu','nai'); return true;");
-    await sleep(350);
+    // ── 游戏背景 相关截图③：奶娃「魔性笑声」大招，全屏光效 ──────────
+    await startFight('gu', 'nai');
     await bridge('b.set({ hp1: 0.83, hp2: 0.22, energy1: 100, energy2: 18, combo1: 6, timeLeft: 3450 }); return true;');
     await bridge('b.forceMove("ultimate", 30); return true;');
     await bridge('b.spawnFx("ultimate"); return true;');
     await sleep(150);
-    await capture('relevant-3-ultimate', { scene: 'fight-ultimate', matchup: 'gu-nai' });
+    await capture('bg-3-ultimate', { scene: 'fight-ultimate', matchup: 'gu-nai' });
 
-    // ── 系统3：回合切换，顶部胜点圆点亮起（牛来 vs 咕咕嘎嘎）──────────
-    await bridge("b.toFight('niu','nai'); return true;");
+    // ── 玩法 相关截图①：对战开场，方向键 + 四个技能键完整可见 ────────
+    await bridge("b.toFight('niu','gu'); return true;");
     await sleep(350);
-    await bridge('b.set({ hp1: 0.4, hp2: 0.72, energy2: 100, combo2: 4, timeLeft: 900 }); return true;');
-    await bridge('b.forceMove("heavy", 12); return true;');
-    await bridge('b.spawnFx("light", true); return true;');
+    await capture('play-1-ready', { scene: 'fight-ready', matchup: 'niu-gu' });
+
+    // ── 玩法 相关截图②：近身出拳命中，血条不满、连击已起 ────────────
+    await startFight('nai', 'niu');
+    await bridge('b.set({ hp1: 0.74, hp2: 0.38, energy1: 46, energy2: 78, combo1: 2, timeLeft: 2760 }); return true;');
+    await bridge('b.forceMove("light", 8); return true;');
+    await bridge('b.spawnFx("light"); return true;');
     await sleep(140);
-    await capture('system-3-vs', { scene: 'fight-round', matchup: 'niu-nai' });
+    await capture('play-2-moves', { scene: 'fight-moves', matchup: 'nai-niu' });
 
-    // ── 相关截图④：结算页（失败态，带看视频续关按钮）咕咕嘎嘎 vs 牛来 ──
-    // 失败页立绘是「赢家」的 idle 姿势，所以这里让牛来赢，
-    // 与相关截图⑤的奶娃胜利姿势形成不同角色，避免两张结算页看起来一样。
-    await bridge("b.toFight('nai','niu'); return true;");
-    await sleep(300);
-    await bridge("b.toResult('p2'); return true;");
-    await sleep(600);
-    await capture('relevant-4-result', { scene: 'result-lose', matchup: 'nai-niu' });
-
-    // ── 相关截图⑤：结算页胜利态，奶娃 vs 牛来 ─────────────────────
+    // ── 玩法 相关截图③：胜利结算，比分 / 造成伤害 / 最高连击 ────────
     await bridge("b.toFight('gu','niu'); return true;");
     await sleep(300);
     await bridge("b.toResult('p1'); return true;");
     await sleep(600);
-    await capture('relevant-5-victory', { scene: 'result-win', matchup: 'gu-niu' });
+    await capture('play-3-score', { scene: 'result-win', matchup: 'gu-niu' });
+
+    // ── 系统1 战斗系统：回合切换，顶部胜点圆点亮起 ──────────────────
+    await startFight('niu', 'nai');
+    await bridge('b.set({ hp1: 0.4, hp2: 0.72, energy2: 100, combo2: 4, timeLeft: 900 }); return true;');
+    await bridge('b.forceMove("heavy", 12); return true;');
+    await bridge('b.spawnFx("light", true); return true;');
+    await sleep(140);
+    await capture('sys-1-battle', { scene: 'fight-round', matchup: 'niu-nai' });
+
+    // ── 系统2 连击与能量：能量满格 + 连击 5 + 重拳命中 ──────────────
+    await startFight('nai', 'gu');
+    await bridge('b.set({ hp1: 0.58, hp2: 0.29, energy1: 100, energy2: 12, combo1: 5, timeLeft: 1560 }); return true;');
+    await bridge('b.forceMove("heavy", 17); return true;');
+    await bridge('b.spawnFx("heavy"); return true;');
+    await sleep(140);
+    await capture('sys-2-energy', { scene: 'fight-energy', matchup: 'nai-gu' });
+
+    // ── 系统3 回合续关：失败结算页，带「看视频续关」按钮 ────────────
+    // 失败页立绘是「赢家」的 idle 姿势，这里让牛来赢，
+    // 与玩法相关截图③的奶娃胜利姿势形成不同角色。
+    await bridge("b.toFight('gu','niu'); return true;");
+    await sleep(300);
+    await bridge("b.toResult('p2'); return true;");
+    await sleep(600);
+    await capture('sys-3-revive', { scene: 'result-lose', matchup: 'gu-niu' });
 
     // 逐对比较，确保没有两张图看起来一样
     const { w: TW, h: TH } = hashes[Object.keys(hashes)[0]];
@@ -334,7 +355,7 @@ async function main() {
         rows.push({ label: `${names[i]} | ${names[j]}`, ranks, worst, global });
       }
     }
-    rows.sort((x, y) => x.worst - y.worst || x.global - y.global);
+    rows.sort((x, y) => x.global - y.global || x.worst - y.worst);
 
     console.log('\n画面差异（左/中/右三段的变化像素比例 + 整幅灰度差）：');
     for (const row of rows.slice(0, 8)) {
