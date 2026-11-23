@@ -32,7 +32,7 @@ import {
 import type { Difficulty, MenuButton, PadButton } from './core/layout.ts';
 import type { View } from './core/view.ts';
 import { createView, fitScale } from './core/view.ts';
-import { installShotBridge } from './dev-bridge.ts';
+import { applyHeldPatch, installShotBridge } from './dev-bridge.ts';
 import { createPlatform } from './platform/index.ts';
 import type { TouchPoint } from './platform/types.ts';
 import { drawHud } from './render/hud.ts';
@@ -399,6 +399,11 @@ function updateFight(): void {
 
   const aiInput = brain.think(battle);
   const events = step(battle, input, aiInput);
+  // 截图模式下把 hold() 登记的字段写回。必须放在 step 之后：
+  // blocking 等字段由 step 内部按输入重算，写早了会被立刻覆盖。
+  if (typeof location !== 'undefined' && location.search.includes('shot=1')) {
+    applyHeldPatch(battle);
+  }
 
   for (const event of events) playHit(event);
   spawnHitFx(battle);

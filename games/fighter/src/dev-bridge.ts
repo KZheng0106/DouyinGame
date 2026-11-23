@@ -28,6 +28,11 @@ export interface ShotHooks {
 export interface ShotBridge extends ShotHooks {
   set(patch: ShotPatch): void;
   forceMove(kind: MoveKind, elapsed: number): void;
+  /**
+   * 每帧覆写某个字段。`blocking` 之类的状态每帧都会被输入重算覆盖，
+   * 用 set() 摆好也会立刻被冲掉，需要这个钩子在 step 之前重新写回去。
+   */
+  hold(patch: ShotPatch): void;
 }
 
 export interface ShotPatch {
@@ -40,6 +45,18 @@ export interface ShotPatch {
   timeLeft?: number;
   flash1?: number;
   blocking1?: boolean;
+  /** 结算页数字：造成伤害与比分。只影响结果页显示，不参与战斗计算。 */
+  damage1?: number;
+  wins1?: number;
+  wins2?: number;
+}
+
+/** hold() 登记的覆写，由 applyHeldPatch 每帧写回。 */
+const heldPatch: ShotPatch = {};
+
+/** 游戏主循环每帧调用（仅 ?shot=1 时安装的桥存在时才有效）。 */
+export function applyHeldPatch(state: BattleState): void {
+  if (heldPatch.blocking1 !== undefined) state.p1.blocking = heldPatch.blocking1;
 }
 
 export function installShotBridge(hooks: ShotHooks): void {
@@ -63,6 +80,12 @@ export function installShotBridge(hooks: ShotHooks): void {
       if (patch.timeLeft !== undefined) state.timeLeft = patch.timeLeft;
       if (patch.flash1 !== undefined) state.p1.flash = patch.flash1;
       if (patch.blocking1 !== undefined) state.p1.blocking = patch.blocking1;
+      if (patch.damage1 !== undefined) state.p1.damageDealt = patch.damage1;
+      if (patch.wins1 !== undefined) state.wins.p1 = patch.wins1;
+      if (patch.wins2 !== undefined) state.wins.p2 = patch.wins2;
+    },
+    hold(patch: ShotPatch): void {
+      Object.assign(heldPatch, patch);
     },
     forceMove(kind: MoveKind, elapsed: number): void {
       const state = hooks.state();
